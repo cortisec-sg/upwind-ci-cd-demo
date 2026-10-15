@@ -78,5 +78,6 @@ jobs:
         with:
           upwind_client_id: ${{ secrets.UPWIND_CLIENT_ID }}
           upwind_client_secret: ${{ secrets.UPWIND_CLIENT_SECRET }}
+          upwind_uri: ap.upwind.io
           docker_image: ${{ env.PUBLISHED_IMAGE }}
           pull_image: false

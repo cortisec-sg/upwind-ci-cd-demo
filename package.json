@@ -1,11 +1,21 @@
 {
-  "name": "upwind-ci-cd-demo", "version": "1.0.0", "private": true,
+  "name": "upwind-ci-cd-demo",
+  "version": "1.0.0",
+  "private": true,
   "description": "Safe, containerized CI/CD demo for Upwind Security and GitHub Actions",
-  "type": "module", "engines": {"node": ">=22"},
-  "scripts": {
-    "start": "node src/server.js", "dev": "node --watch src/server.js",
-    "test": "node --test", "traffic": "node scripts/generate-traffic.js",
-    "demo:risk": "node scripts/demo-risk.js add", "demo:fix": "node scripts/demo-risk.js fix"
+  "type": "module",
+  "engines": {
+    "node": ">=22"
   },
-  "dependencies": {}, "devDependencies": {}
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "test": "node --test",
+    "traffic": "node scripts/generate-traffic.js",
+    "demo:risk": "node scripts/demo-risk.js add",
+    "demo:fix": "node scripts/demo-risk.js fix"
+  },
+  "dependencies": {
+    "lodash": "4.17.20"
+  }
 }

@@ -1,0 +1,46 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: upwind-demo
+  namespace: upwind-demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: upwind-demo
+  template:
+    metadata:
+      labels:
+        app: upwind-demo
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: demo
+          image: ghcr.io/cortisec-sg/upwind-ci-cd-demo:replace-with-commit-sha
+          imagePullPolicy: Always
+          ports:
+            - name: http
+              containerPort: 3000
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 300m
+              memory: 256Mi
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: 3000
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 3000

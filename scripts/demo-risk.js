@@ -18,14 +18,19 @@ function change(file, from, to) {
   if (!current.includes(from)) throw Error('Cannot locate expected text: ' + from);
   writeFileSync(file, current.replace(from, to));
 }
-const npm = process.platform === 'win32' ? 'npm.cmd' : 'npm';
+// Invoke npm through Node instead of spawning npm.cmd directly (Node 24 / Windows).
+const npmCli = process.env.npm_execpath ||
+  resolve(dirname(process.execPath), 'node_modules/npm/bin/npm-cli.js');
+function runNpm(args) {
+  execFileSync(process.execPath, [npmCli, ...args], { cwd: root, stdio: 'inherit' });
+}
 if (mode === 'add') {
-  execFileSync(npm, ['install','--save-exact','--ignore-scripts','lodash@4.17.20'], {cwd:root,stdio:'inherit'});
+  runNpm(['install','--save-exact','--ignore-scripts','lodash@4.17.20']);
   change(manifest, 'readOnlyRootFilesystem: true', 'readOnlyRootFilesystem: false');
   change(terraform, 'block_public_acls = true', 'block_public_acls = false');
   console.log('Demo risks added. Open a PR. Do NOT deploy this branch.');
 } else {
-  execFileSync(npm, ['uninstall','--ignore-scripts','lodash'], {cwd:root,stdio:'inherit'});
+  runNpm(['uninstall','--ignore-scripts','lodash']);
   change(manifest, 'readOnlyRootFilesystem: false', 'readOnlyRootFilesystem: true');
   change(terraform, 'block_public_acls = false', 'block_public_acls = true');
   console.log('Demo risks removed. Commit the fixes to the same PR.');

@@ -47,6 +47,7 @@ jobs:
           upwind_client_secret: ${{ secrets.UPWIND_CLIENT_SECRET }}
           docker_image: ${{ env.LOCAL_IMAGE }}
           pull_image: false
+          perform_multiarchitecture_image_scan: false
           fail_on_scan_error: true
           add_comment: ${{ github.event_name == 'pull_request' }}
           github_token: ${{ secrets.GITHUB_TOKEN }}

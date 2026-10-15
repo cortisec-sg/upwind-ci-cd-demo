@@ -1,0 +1,80 @@
+name: Build, Scan and Publish (Upwind)
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+  pull-requests: write
+  packages: write
+jobs:
+  build-scan-publish:
+    runs-on: ubuntu-latest
+    env:
+      UPWIND_CLIENT_ID: ${{ secrets.UPWIND_CLIENT_ID }}
+      UPWIND_CLIENT_SECRET: ${{ secrets.UPWIND_CLIENT_SECRET }}
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+      - name: Run unit tests
+        run: npm test
+      - name: Generate image names
+        shell: bash
+        run: |
+          echo "LOCAL_IMAGE=upwind-ci-cd-demo:${GITHUB_SHA}" >> "$GITHUB_ENV"
+          echo "PUBLISHED_IMAGE=ghcr.io/${GITHUB_REPOSITORY,,}:${GITHUB_SHA}" >> "$GITHUB_ENV"
+      - name: Build Docker image
+        run: docker build --tag "$LOCAL_IMAGE" .
+      - name: Configure Upwind prerequisites
+        if: ${{ env.UPWIND_CLIENT_ID == '' || env.UPWIND_CLIENT_SECRET == '' }}
+        run: |
+          echo "Upwind credentials are not configured: skipping scanning and publishing."
+          echo "Add UPWIND_CLIENT_ID and UPWIND_CLIENT_SECRET in GitHub Actions Secrets."
+      - name: Scan built image with Upwind
+        if: ${{ env.UPWIND_CLIENT_ID != '' && env.UPWIND_CLIENT_SECRET != '' }}
+        uses: upwindsecurity/shiftleft-create-image-scan-event-action@main
+        with:
+          upwind_client_id: ${{ secrets.UPWIND_CLIENT_ID }}
+          upwind_client_secret: ${{ secrets.UPWIND_CLIENT_SECRET }}
+          docker_image: ${{ env.LOCAL_IMAGE }}
+          pull_image: false
+          fail_on_scan_error: true
+          add_comment: ${{ github.event_name == 'pull_request' }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          pr_number: ${{ github.event.pull_request.number }}
+          repo_name: ${{ github.repository }}
+          main_branch: ${{ github.event.pull_request.base.ref }}
+          pr_id: ${{ github.event.pull_request.number }}
+          pr_link: ${{ github.event.pull_request.html_url }}
+          block_on: ${{ vars.UPWIND_BLOCK_ON }}
+          enforce_block_policy: ${{ vars.UPWIND_ENFORCE_BLOCK_POLICY || 'false' }}
+      - name: Sign in to GitHub Container Registry
+        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && env.UPWIND_CLIENT_ID != '' && env.UPWIND_CLIENT_SECRET != '' }}
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Publish approved image to GHCR
+        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && env.UPWIND_CLIENT_ID != '' && env.UPWIND_CLIENT_SECRET != '' }}
+        shell: bash
+        run: |
+          docker tag "$LOCAL_IMAGE" "$PUBLISHED_IMAGE"
+          docker push "$PUBLISHED_IMAGE"
+      - name: Register published image with Upwind
+        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && env.UPWIND_CLIENT_ID != '' && env.UPWIND_CLIENT_SECRET != '' }}
+        uses: upwindsecurity/shiftleft-create-image-publish-event-action@main
+        with:
+          upwind_client_id: ${{ secrets.UPWIND_CLIENT_ID }}
+          upwind_client_secret: ${{ secrets.UPWIND_CLIENT_SECRET }}
+          docker_image: ${{ env.PUBLISHED_IMAGE }}
+          pull_image: false
